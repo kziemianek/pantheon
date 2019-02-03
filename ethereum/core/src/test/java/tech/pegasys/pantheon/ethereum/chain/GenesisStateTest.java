@@ -86,6 +86,19 @@ public final class GenesisStateTest {
   }
 
   @Test
+  public void createFromJsonWithContract() throws Exception {
+    final GenesisState genesisState =
+        GenesisState.fromJson(
+            Resources.toString(GenesisStateTest.class.getResource("genesis3.json"), Charsets.UTF_8),
+            MainnetProtocolSchedule.create());
+    final BlockHeader header = genesisState.getBlock().getHeader();
+    assertThat(header.getHash())
+        .isEqualTo(
+            Hash.fromHexString(
+                "0xe7fd8db206dcaf066b7c97b8a42a0abc18653613560748557ab44868652a78b6"));
+  }
+
+  @Test
   public void encodeOlympicBlock() throws Exception {
     final GenesisState genesisState =
         GenesisState.fromJson(
