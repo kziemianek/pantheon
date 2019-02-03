@@ -36,7 +36,7 @@ import tech.pegasys.pantheon.util.uint.UInt256;
 
 import java.math.BigInteger;
 import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -79,7 +79,6 @@ public final class GenesisState {
    * @param <C> The consensus context type
    * @return A new {@link GenesisState}.
    */
-  @SuppressWarnings("unchecked")
   public static <C> GenesisState fromConfig(
       final GenesisConfigFile config, final ProtocolSchedule<C> protocolSchedule) {
     final List<GenesisAccount> genesisAccounts =
@@ -109,12 +108,10 @@ public final class GenesisState {
     final WorldUpdater updater = target.updater();
     genesisAccounts.forEach(
         genesisAccount -> {
-          MutableAccount account = updater.getOrCreate(genesisAccount.address);
+          final MutableAccount account = updater.getOrCreate(genesisAccount.address);
           account.setBalance(genesisAccount.balance);
           account.setCode(genesisAccount.code);
-          for (Map.Entry<UInt256, UInt256> entry : genesisAccount.storage.entrySet()) {
-            account.setStorageValue(entry.getKey(), entry.getValue());
-          }
+          genesisAccount.storage.forEach(account::setStorageValue);
         });
     updater.commit();
     target.persist();
@@ -184,7 +181,6 @@ public final class GenesisState {
     return Long.parseUnsignedLong(nonce, 16);
   }
 
-  @SuppressWarnings("unchecked")
   private static Stream<GenesisAccount> parseAllocations(final GenesisConfigFile genesis) {
     return genesis.getAllocations().map(GenesisAccount::fromAllocation);
   }
@@ -235,12 +231,10 @@ public final class GenesisState {
     }
 
     private Map<UInt256, UInt256> parseStorage(final Map<String, Object> storage) {
-      LinkedHashMap<UInt256, UInt256> parsedStorage = new LinkedHashMap<>();
-      for (Map.Entry<String, Object> entry : storage.entrySet()) {
-        parsedStorage.put(
-            UInt256.fromHexString(entry.getKey()),
-            UInt256.fromHexString((String) entry.getValue()));
-      }
+      final Map<UInt256, UInt256> parsedStorage = new HashMap<>();
+      storage.forEach(
+          (key, value) ->
+              parsedStorage.put(UInt256.fromHexString(key), UInt256.fromHexString((String) value)));
       return parsedStorage;
     }
 
@@ -249,6 +243,8 @@ public final class GenesisState {
       return MoreObjects.toStringHelper(this)
           .add("address", address)
           .add("balance", balance)
+          .add("code", code)
+          .add("storage", storage)
           .toString();
     }
   }
