@@ -13,6 +13,7 @@
 package tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor;
 
 import tech.pegasys.pantheon.ethereum.chain.Blockchain;
+import tech.pegasys.pantheon.ethereum.core.Block;
 import tech.pegasys.pantheon.ethereum.core.BlockBody;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.core.Hash;
@@ -24,7 +25,9 @@ import tech.pegasys.pantheon.ethereum.mainnet.TransactionProcessor;
 import tech.pegasys.pantheon.ethereum.vm.BlockHashLookup;
 import tech.pegasys.pantheon.ethereum.worldstate.WorldStateArchive;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class BlockReplay {
 
@@ -41,45 +44,71 @@ public class BlockReplay {
     this.worldStateArchive = worldStateArchive;
   }
 
+  public BlockTrace block(final Hash blockHash, final Action<TransactionTrace> action) {
+    return performActionPerBlockTransaction(
+            blockHash,
+            (body, header, blockchain, mutableWorldState, transactionProcessor) -> {
+              List<TransactionTrace> transactionTraces =
+                  body.getTransactions().stream()
+                      .map(
+                          transaction ->
+                              action.performAction(
+                                  transaction,
+                                  header,
+                                  blockchain,
+                                  mutableWorldState,
+                                  transactionProcessor))
+                      .collect(Collectors.toList());
+              return Optional.of(new BlockTrace(transactionTraces));
+            })
+        .orElse(null);
+  }
+
+  public BlockTrace block(final Block block, final Action<TransactionTrace> action) {
+    return performActionPerBlockTransaction(
+            block.getHeader(),
+            block.getBody(),
+            (body, header, blockchain, mutableWorldState, transactionProcessor) -> {
+              List<TransactionTrace> transactionTraces =
+                  body.getTransactions().stream()
+                      .map(
+                          transaction ->
+                              action.performAction(
+                                  transaction,
+                                  header,
+                                  blockchain,
+                                  mutableWorldState,
+                                  transactionProcessor))
+                      .collect(Collectors.toList());
+              return Optional.of(new BlockTrace(transactionTraces));
+            })
+        .orElse(null);
+  }
+
   public <T> Optional<T> beforeTransactionInBlock(
       final Hash blockHash, final Hash transactionHash, final Action<T> action) {
-    final BlockHeader header = blockchain.getBlockHeader(blockHash).orElse(null);
-    if (header == null) {
-      return Optional.empty();
-    }
-    final BlockBody body = blockchain.getBlockBody(header.getHash()).orElse(null);
-    if (body == null) {
-      return Optional.empty();
-    }
-    final ProtocolSpec<?> protocolSpec = protocolSchedule.getByBlockNumber(header.getNumber());
-    final TransactionProcessor transactionProcessor = protocolSpec.getTransactionProcessor();
-    final BlockHeader previous = blockchain.getBlockHeader(header.getParentHash()).orElse(null);
-    if (previous == null) {
-      return Optional.empty();
-    }
-    final MutableWorldState mutableWorldState =
-        worldStateArchive.getMutable(previous.getStateRoot()).orElse(null);
-    if (mutableWorldState == null) {
-      return Optional.empty();
-    }
-    final BlockHashLookup blockHashLookup = new BlockHashLookup(header, blockchain);
-    for (final Transaction transaction : body.getTransactions()) {
-      if (transaction.hash().equals(transactionHash)) {
-        return Optional.of(
-            action.performAction(
-                transaction, header, blockchain, mutableWorldState, transactionProcessor));
-      } else {
-        final ProtocolSpec<?> spec = protocolSchedule.getByBlockNumber(header.getNumber());
-        transactionProcessor.processTransaction(
-            blockchain,
-            mutableWorldState.updater(),
-            header,
-            transaction,
-            spec.getMiningBeneficiaryCalculator().calculateBeneficiary(header),
-            blockHashLookup);
-      }
-    }
-    return Optional.empty();
+    return performActionPerBlockTransaction(
+        blockHash,
+        (body, header, blockchain, mutableWorldState, transactionProcessor) -> {
+          final BlockHashLookup blockHashLookup = new BlockHashLookup(header, blockchain);
+          for (final Transaction transaction : body.getTransactions()) {
+            if (transaction.hash().equals(transactionHash)) {
+              return Optional.of(
+                  action.performAction(
+                      transaction, header, blockchain, mutableWorldState, transactionProcessor));
+            } else {
+              final ProtocolSpec<?> spec = protocolSchedule.getByBlockNumber(header.getNumber());
+              transactionProcessor.processTransaction(
+                  blockchain,
+                  mutableWorldState.updater(),
+                  header,
+                  transaction,
+                  spec.getMiningBeneficiaryCalculator().calculateBeneficiary(header),
+                  blockHashLookup);
+            }
+          }
+          return Optional.empty();
+        });
   }
 
   public <T> Optional<T> afterTransactionInBlock(
@@ -101,6 +130,49 @@ public class BlockReplay {
         });
   }
 
+  private <T> Optional<T> performActionPerBlockTransaction(
+      final Hash blockHash, final BlockTransactionAction<T> action) {
+    final BlockHeader header = blockchain.getBlockHeader(blockHash).orElse(null);
+    BlockBody body = null;
+    if (header != null) {
+      body = blockchain.getBlockBody(header.getHash()).orElse(null);
+    }
+    return performActionPerBlockTransaction(header, body, action);
+  }
+
+  private <T> Optional<T> performActionPerBlockTransaction(
+      final BlockHeader header, final BlockBody body, final BlockTransactionAction<T> action) {
+    if (header == null) {
+      return Optional.empty();
+    }
+    if (body == null) {
+      return Optional.empty();
+    }
+    final ProtocolSpec<?> protocolSpec = protocolSchedule.getByBlockNumber(header.getNumber());
+    final TransactionProcessor transactionProcessor = protocolSpec.getTransactionProcessor();
+    final BlockHeader previous = blockchain.getBlockHeader(header.getParentHash()).orElse(null);
+    if (previous == null) {
+      return Optional.empty();
+    }
+    final MutableWorldState mutableWorldState =
+        worldStateArchive.getMutable(previous.getStateRoot()).orElse(null);
+    if (mutableWorldState == null) {
+      return Optional.empty();
+    }
+    return action.perform(body, header, blockchain, mutableWorldState, transactionProcessor);
+  }
+
+  @FunctionalInterface
+  private interface BlockTransactionAction<T> {
+    Optional<T> perform(
+        BlockBody body,
+        BlockHeader blockHeader,
+        Blockchain blockchain,
+        MutableWorldState worldState,
+        TransactionProcessor transactionProcessor);
+  }
+
+  @FunctionalInterface
   public interface Action<T> {
 
     T performAction(
