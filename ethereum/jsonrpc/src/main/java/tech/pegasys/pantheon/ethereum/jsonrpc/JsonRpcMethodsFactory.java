@@ -26,6 +26,9 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.AdminPeers;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.AdminRemovePeer;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.DebugMetrics;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.DebugStorageRangeAt;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.DebugTraceBlock;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.DebugTraceBlockByHash;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.DebugTraceBlockByNumber;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.DebugTraceTransaction;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.EthAccounts;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.EthBlockNumber;
@@ -87,6 +90,7 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.privacy.EeaGetTra
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.privacy.EeaSendRawTransaction;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.parameters.JsonRpcParameter;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockReplay;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTracer;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.TransactionTracer;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.queries.BlockchainQueries;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.BlockResultFactory;
@@ -232,7 +236,10 @@ public class JsonRpcMethodsFactory {
           new DebugTraceTransaction(
               blockchainQueries, new TransactionTracer(blockReplay), parameter),
           new DebugStorageRangeAt(parameter, blockchainQueries, blockReplay),
-          new DebugMetrics(metricsSystem));
+          new DebugMetrics(metricsSystem),
+          new DebugTraceBlock(parameter, new BlockTracer(blockReplay)),
+          new DebugTraceBlockByNumber(parameter, new BlockTracer(blockReplay), blockchainQueries),
+          new DebugTraceBlockByHash(parameter, new BlockTracer(blockReplay)));
     }
     if (rpcApis.contains(RpcApis.NET)) {
       addMethods(
