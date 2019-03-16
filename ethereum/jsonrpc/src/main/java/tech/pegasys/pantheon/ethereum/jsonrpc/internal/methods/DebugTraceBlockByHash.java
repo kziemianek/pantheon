@@ -15,10 +15,13 @@ package tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods;
 import tech.pegasys.pantheon.ethereum.core.Hash;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.JsonRpcRequest;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.parameters.JsonRpcParameter;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTrace;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTracer;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcSuccessResponse;
-import tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.DebugTraceBlockResult;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.DebugTraceTransactionResult;
+
+import java.util.Collection;
 
 public class DebugTraceBlockByHash implements JsonRpcMethod {
 
@@ -38,8 +41,12 @@ public class DebugTraceBlockByHash implements JsonRpcMethod {
   @Override
   public JsonRpcResponse response(final JsonRpcRequest request) {
     final Hash blockHash = parameters.required(request.getParams(), 0, Hash.class);
-    DebugTraceBlockResult result =
-        blockTracer.trace(blockHash).map(DebugTraceBlockResult::new).orElse(null);
-    return new JsonRpcSuccessResponse(request.getId(), result);
+    Collection<DebugTraceTransactionResult> results =
+        blockTracer
+            .trace(blockHash)
+            .map(BlockTrace::getTransactionTraces)
+            .map(DebugTraceTransactionResult::of)
+            .orElse(null);
+    return new JsonRpcSuccessResponse(request.getId(), results);
   }
 }

@@ -13,7 +13,7 @@
 package tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -26,16 +26,15 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTrace;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTracer;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.TransactionTrace;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcSuccessResponse;
-import tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.DebugTraceBlockResult;
-import tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.StructLog;
+import tech.pegasys.pantheon.ethereum.mainnet.TransactionProcessor;
 import tech.pegasys.pantheon.ethereum.vm.ExceptionalHaltReason;
+import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Optional;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 public class DebugTraceBlockByHashTest {
@@ -69,6 +68,10 @@ public class DebugTraceBlockByHashTest {
             Optional.empty(),
             Optional.empty(),
             Optional.empty());
+
+    final TransactionProcessor.Result transaction1Result = mock(TransactionProcessor.Result.class);
+    final TransactionProcessor.Result transaction2Result = mock(TransactionProcessor.Result.class);
+
     final TransactionTrace transaction1Trace = mock(TransactionTrace.class);
     final TransactionTrace transaction2Trace = mock(TransactionTrace.class);
 
@@ -78,14 +81,15 @@ public class DebugTraceBlockByHashTest {
     when(transaction2Trace.getGas()).thenReturn(35L);
     when(transaction1Trace.getTraceFrames()).thenReturn(Arrays.asList(traceFrame));
     when(transaction2Trace.getTraceFrames()).thenReturn(Arrays.asList(traceFrame));
+    when(transaction1Trace.getResult()).thenReturn(transaction1Result);
+    when(transaction2Trace.getResult()).thenReturn(transaction2Result);
+    when(transaction1Result.getOutput()).thenReturn(BytesValue.fromHexString("1234"));
+    when(transaction2Result.getOutput()).thenReturn(BytesValue.fromHexString("1234"));
     when(blockTracer.trace(eq(blockHash))).thenReturn(Optional.of(blockTrace));
 
     final JsonRpcSuccessResponse response =
         (JsonRpcSuccessResponse) debugTraceBlockByHash.response(request);
-    final DebugTraceBlockResult result = (DebugTraceBlockResult) response.getResult();
-    Assert.assertEquals(57, result.getGas());
-    final List<StructLog> expectedStructLogs =
-        Arrays.asList(new StructLog(traceFrame), new StructLog(traceFrame));
-    assertEquals(expectedStructLogs, result.getStructLogs());
+    final Collection<?> result = (Collection<?>) response.getResult();
+    assertEquals(2, result.size());
   }
 }

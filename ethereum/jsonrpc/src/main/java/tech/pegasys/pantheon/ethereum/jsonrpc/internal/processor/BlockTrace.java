@@ -16,13 +16,13 @@ import java.util.List;
 
 public class BlockTrace {
 
-  private final List<TransactionTrace> transactions;
+  private final List<TransactionTrace> transactionTraces;
 
-  public BlockTrace(final List<TransactionTrace> transactions) {
-    this.transactions = transactions;
+  public BlockTrace(final List<TransactionTrace> transactionTraces) {
+    this.transactionTraces = transactionTraces;
   }
 
-  public List<TransactionTrace> getTransactions() {
-    return transactions;
+  public List<TransactionTrace> getTransactionTraces() {
+    return transactionTraces;
   }
 }
