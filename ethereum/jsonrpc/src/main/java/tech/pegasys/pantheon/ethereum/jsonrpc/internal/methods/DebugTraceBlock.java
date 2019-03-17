@@ -13,6 +13,7 @@
 package tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods;
 
 import tech.pegasys.pantheon.ethereum.core.Block;
+import tech.pegasys.pantheon.ethereum.core.BlockHashFunction;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.JsonRpcRequest;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.parameters.JsonRpcParameter;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTrace;
@@ -20,7 +21,6 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTracer;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcSuccessResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.DebugTraceTransactionResult;
-import tech.pegasys.pantheon.ethereum.mainnet.MainnetBlockHashFunction;
 import tech.pegasys.pantheon.ethereum.rlp.RLP;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
@@ -30,10 +30,15 @@ public class DebugTraceBlock implements JsonRpcMethod {
 
   private final JsonRpcParameter parameters;
   private final BlockTracer blockTracer;
+  private final BlockHashFunction blockHashFunction;
 
-  public DebugTraceBlock(final JsonRpcParameter parameters, final BlockTracer blockTracer) {
+  public DebugTraceBlock(
+      final JsonRpcParameter parameters,
+      final BlockTracer blockTracer,
+      final BlockHashFunction blockHashFunction) {
     this.parameters = parameters;
     this.blockTracer = blockTracer;
+    this.blockHashFunction = blockHashFunction;
   }
 
   @Override
@@ -45,8 +50,7 @@ public class DebugTraceBlock implements JsonRpcMethod {
   public JsonRpcResponse response(final JsonRpcRequest request) {
     final String input = parameters.required(request.getParams(), 0, String.class);
     final Block block =
-        Block.readFrom(
-            RLP.input(BytesValue.fromHexString(input)), MainnetBlockHashFunction::createHash);
+        Block.readFrom(RLP.input(BytesValue.fromHexString(input)), this.blockHashFunction);
     Collection<DebugTraceTransactionResult> results =
         blockTracer
             .trace(block)

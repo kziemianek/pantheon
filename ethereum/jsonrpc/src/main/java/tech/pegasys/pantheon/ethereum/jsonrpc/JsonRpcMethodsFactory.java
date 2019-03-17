@@ -95,6 +95,7 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.TransactionTrac
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.queries.BlockchainQueries;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.BlockResultFactory;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
+import tech.pegasys.pantheon.ethereum.mainnet.ScheduleBasedBlockHashFunction;
 import tech.pegasys.pantheon.ethereum.p2p.api.P2PNetwork;
 import tech.pegasys.pantheon.ethereum.p2p.wire.Capability;
 import tech.pegasys.pantheon.ethereum.permissioning.AccountWhitelistController;
@@ -237,7 +238,10 @@ public class JsonRpcMethodsFactory {
               blockchainQueries, new TransactionTracer(blockReplay), parameter),
           new DebugStorageRangeAt(parameter, blockchainQueries, blockReplay),
           new DebugMetrics(metricsSystem),
-          new DebugTraceBlock(parameter, new BlockTracer(blockReplay)),
+          new DebugTraceBlock(
+              parameter,
+              new BlockTracer(blockReplay),
+              ScheduleBasedBlockHashFunction.create(protocolSchedule)),
           new DebugTraceBlockByNumber(parameter, new BlockTracer(blockReplay), blockchainQueries),
           new DebugTraceBlockByHash(parameter, new BlockTracer(blockReplay)));
     }

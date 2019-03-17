@@ -42,7 +42,8 @@ public class DebugTraceBlockTest {
 
   private final JsonRpcParameter parameters = new JsonRpcParameter();
   private final BlockTracer blockTracer = mock(BlockTracer.class);
-  private final DebugTraceBlock debugTraceBlock = new DebugTraceBlock(parameters, blockTracer);
+  private final DebugTraceBlock debugTraceBlock =
+      new DebugTraceBlock(parameters, blockTracer, MainnetBlockHashFunction::createHash);
 
   @Test
   public void nameShouldBeDebugTraceBlock() {
