@@ -44,26 +44,6 @@ public class BlockReplay {
     this.worldStateArchive = worldStateArchive;
   }
 
-  public BlockTrace block(final Hash blockHash, final Action<TransactionTrace> action) {
-    return performActionPerBlockTransaction(
-            blockHash,
-            (body, header, blockchain, mutableWorldState, transactionProcessor) -> {
-              List<TransactionTrace> transactionTraces =
-                  body.getTransactions().stream()
-                      .map(
-                          transaction ->
-                              action.performAction(
-                                  transaction,
-                                  header,
-                                  blockchain,
-                                  mutableWorldState,
-                                  transactionProcessor))
-                      .collect(Collectors.toList());
-              return Optional.of(new BlockTrace(transactionTraces));
-            })
-        .orElse(null);
-  }
-
   public BlockTrace block(final Block block, final Action<TransactionTrace> action) {
     return performActionPerBlockTransaction(
             block.getHeader(),
@@ -83,6 +63,10 @@ public class BlockReplay {
               return Optional.of(new BlockTrace(transactionTraces));
             })
         .orElse(null);
+  }
+
+  public BlockTrace block(final Hash blockHash, final Action<TransactionTrace> action) {
+    return getBlock(blockHash).map(block -> block(block, action)).orElse(null);
   }
 
   public <T> Optional<T> beforeTransactionInBlock(
@@ -132,12 +116,9 @@ public class BlockReplay {
 
   private <T> Optional<T> performActionPerBlockTransaction(
       final Hash blockHash, final BlockTransactionAction<T> action) {
-    final BlockHeader header = blockchain.getBlockHeader(blockHash).orElse(null);
-    BlockBody body = null;
-    if (header != null) {
-      body = blockchain.getBlockBody(header.getHash()).orElse(null);
-    }
-    return performActionPerBlockTransaction(header, body, action);
+    return getBlock(blockHash)
+        .map(block -> performActionPerBlockTransaction(block.getHeader(), block.getBody(), action))
+        .orElse(Optional.empty());
   }
 
   private <T> Optional<T> performActionPerBlockTransaction(
@@ -162,6 +143,17 @@ public class BlockReplay {
     return action.perform(body, header, blockchain, mutableWorldState, transactionProcessor);
   }
 
+  private Optional<Block> getBlock(final Hash blockHash) {
+    final BlockHeader blockHeader = blockchain.getBlockHeader(blockHash).orElse(null);
+    if (blockHeader != null) {
+      BlockBody blockBody = blockchain.getBlockBody(blockHeader.getHash()).orElse(null);
+      if (blockBody != null) {
+        return Optional.of(new Block(blockHeader, blockBody));
+      }
+    }
+    return Optional.empty();
+  }
+
   @FunctionalInterface
   private interface BlockTransactionAction<T> {
     Optional<T> perform(
@@ -174,7 +166,6 @@ public class BlockReplay {
 
   @FunctionalInterface
   public interface Action<T> {
-
     T performAction(
         Transaction transaction,
         BlockHeader blockHeader,
