@@ -14,7 +14,6 @@ package tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor;
 
 import tech.pegasys.pantheon.ethereum.core.Block;
 import tech.pegasys.pantheon.ethereum.core.Hash;
-import tech.pegasys.pantheon.ethereum.debug.TraceOptions;
 import tech.pegasys.pantheon.ethereum.mainnet.TransactionProcessor;
 import tech.pegasys.pantheon.ethereum.vm.BlockHashLookup;
 import tech.pegasys.pantheon.ethereum.vm.DebugOperationTracer;
@@ -26,30 +25,31 @@ public class BlockTracer {
 
   private final BlockReplay blockReplay;
 
-  private final BlockReplay.Action<TransactionTrace> replayAction =
-      (transaction, header, blockchain, mutableWorldState, transactionProcessor) -> {
-        DebugOperationTracer tracer = new DebugOperationTracer(TraceOptions.DEFAULT);
-        final TransactionProcessor.Result result =
-            transactionProcessor.processTransaction(
-                blockchain,
-                mutableWorldState.updater(),
-                header,
-                transaction,
-                header.getCoinbase(),
-                new DebugOperationTracer(TraceOptions.DEFAULT),
-                new BlockHashLookup(header, blockchain));
-        return new TransactionTrace(transaction, result, tracer.getTraceFrames());
-      };
-
   public BlockTracer(final BlockReplay blockReplay) {
     this.blockReplay = blockReplay;
   }
 
-  public Optional<BlockTrace> trace(final Hash blockHash) {
-    return Optional.of(blockReplay.block(blockHash, this.replayAction));
+  public Optional<BlockTrace> trace(final Hash blockHash, final DebugOperationTracer tracer) {
+    return Optional.of(blockReplay.block(blockHash, prepareReplayAction(tracer)));
   }
 
-  public Optional<BlockTrace> trace(final Block block) {
-    return Optional.of(blockReplay.block(block, this.replayAction));
+  public Optional<BlockTrace> trace(final Block block, final DebugOperationTracer tracer) {
+    return Optional.of(blockReplay.block(block, this.prepareReplayAction(tracer)));
+  }
+
+  private BlockReplay.Action<TransactionTrace> prepareReplayAction(
+      final DebugOperationTracer tracer) {
+    return (transaction, header, blockchain, mutableWorldState, transactionProcessor) -> {
+      final TransactionProcessor.Result result =
+          transactionProcessor.processTransaction(
+              blockchain,
+              mutableWorldState.updater(),
+              header,
+              transaction,
+              header.getCoinbase(),
+              tracer,
+              new BlockHashLookup(header, blockchain));
+      return new TransactionTrace(transaction, result, tracer.getTraceFrames());
+    };
   }
 }

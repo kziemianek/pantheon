@@ -13,6 +13,7 @@
 package tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -89,7 +90,7 @@ public class DebugTraceBlockByNumberTest {
     when(transaction1Result.getOutput()).thenReturn(BytesValue.fromHexString("1234"));
     when(transaction2Result.getOutput()).thenReturn(BytesValue.fromHexString("1234"));
     when(blockchain.getBlockHashByNumber(blockNumber)).thenReturn(Optional.of(blockHash));
-    when(blockTracer.trace(eq(blockHash))).thenReturn(Optional.of(blockTrace));
+    when(blockTracer.trace(eq(blockHash), any())).thenReturn(Optional.of(blockTrace));
 
     final JsonRpcSuccessResponse response =
         (JsonRpcSuccessResponse) debugTraceBlockByNumber.response(request);
