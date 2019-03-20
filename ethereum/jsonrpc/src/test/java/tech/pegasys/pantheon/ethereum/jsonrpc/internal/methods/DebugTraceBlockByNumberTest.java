@@ -81,8 +81,6 @@ public class DebugTraceBlockByNumberTest {
 
     BlockTrace blockTrace = new BlockTrace(Arrays.asList(transaction1Trace, transaction2Trace));
 
-    when(transaction1Trace.getGas()).thenReturn(22L);
-    when(transaction2Trace.getGas()).thenReturn(35L);
     when(transaction1Trace.getTraceFrames()).thenReturn(Arrays.asList(traceFrame));
     when(transaction2Trace.getTraceFrames()).thenReturn(Arrays.asList(traceFrame));
     when(transaction1Trace.getResult()).thenReturn(transaction1Result);
