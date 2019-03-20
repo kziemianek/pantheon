@@ -19,6 +19,9 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.JsonRpcRequest;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.parameters.JsonRpcParameter;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTrace;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTracer;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.queries.BlockchainQueries;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcError;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcErrorResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcSuccessResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.DebugTraceTransactionResult;
@@ -33,14 +36,17 @@ public class DebugTraceBlock implements JsonRpcMethod, DebugTraceJsonRpcMethod {
   private final JsonRpcParameter parameters;
   private final BlockTracer blockTracer;
   private final BlockHashFunction blockHashFunction;
+  private final BlockchainQueries blockchain;
 
   public DebugTraceBlock(
       final JsonRpcParameter parameters,
       final BlockTracer blockTracer,
-      final BlockHashFunction blockHashFunction) {
+      final BlockHashFunction blockHashFunction,
+      final BlockchainQueries blockchain) {
     this.parameters = parameters;
     this.blockTracer = blockTracer;
     this.blockHashFunction = blockHashFunction;
+    this.blockchain = blockchain;
   }
 
   @Override
@@ -55,12 +61,16 @@ public class DebugTraceBlock implements JsonRpcMethod, DebugTraceJsonRpcMethod {
         Block.readFrom(RLP.input(BytesValue.fromHexString(input)), this.blockHashFunction);
     final TraceOptions traceOptions = getTraceOptions(request, parameters);
 
-    Collection<DebugTraceTransactionResult> results =
-        blockTracer
-            .trace(block, new DebugOperationTracer(traceOptions))
-            .map(BlockTrace::getTransactionTraces)
-            .map(DebugTraceTransactionResult::of)
-            .orElse(null);
-    return new JsonRpcSuccessResponse(request.getId(), results);
+    if (this.blockchain.blockByHash(block.getHeader().getParentHash()).isPresent()) {
+      Collection<DebugTraceTransactionResult> results =
+          blockTracer
+              .trace(block, new DebugOperationTracer(traceOptions))
+              .map(BlockTrace::getTransactionTraces)
+              .map(DebugTraceTransactionResult::of)
+              .orElse(null);
+      return new JsonRpcSuccessResponse(request.getId(), results);
+    } else {
+      return new JsonRpcErrorResponse(request.getId(), JsonRpcError.PARENT_BLOCK_NOT_FOUND);
+    }
   }
 }

@@ -26,6 +26,10 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.parameters.JsonRpcParamet
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTrace;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTracer;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.TransactionTrace;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.queries.BlockWithMetadata;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.queries.BlockchainQueries;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcError;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcErrorResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcSuccessResponse;
 import tech.pegasys.pantheon.ethereum.mainnet.MainnetBlockHashFunction;
 import tech.pegasys.pantheon.ethereum.mainnet.TransactionProcessor;
@@ -34,6 +38,7 @@ import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Optional;
 
@@ -44,8 +49,10 @@ public class DebugTraceBlockTest {
 
   private final JsonRpcParameter parameters = new JsonRpcParameter();
   private final BlockTracer blockTracer = mock(BlockTracer.class);
+  private final BlockchainQueries blockchainQueries = mock(BlockchainQueries.class);
   private final DebugTraceBlock debugTraceBlock =
-      new DebugTraceBlock(parameters, blockTracer, MainnetBlockHashFunction::createHash);
+      new DebugTraceBlock(
+          parameters, blockTracer, MainnetBlockHashFunction::createHash, blockchainQueries);
 
   @Test
   public void nameShouldBeDebugTraceBlock() {
@@ -54,11 +61,17 @@ public class DebugTraceBlockTest {
 
   @Test
   public void shouldReturnCorrectResponse() {
-    Block block =
+    Block parentBlock =
         new BlockDataGenerator()
             .block(
                 BlockDataGenerator.BlockOptions.create()
                     .setBlockHashFunction(MainnetBlockHashFunction::createHash));
+    Block block =
+        new BlockDataGenerator()
+            .block(
+                BlockDataGenerator.BlockOptions.create()
+                    .setBlockHashFunction(MainnetBlockHashFunction::createHash)
+                    .setParentHash(parentBlock.getHash()));
 
     final Object[] params = new Object[] {block.toRlp().toString()};
     final JsonRpcRequest request = new JsonRpcRequest("2.0", "debug_traceBlock", params);
@@ -93,9 +106,44 @@ public class DebugTraceBlockTest {
     when(transaction2Result.getOutput()).thenReturn(BytesValue.fromHexString("1234"));
     when(blockTracer.trace(Mockito.eq(block), any())).thenReturn(Optional.of(blockTrace));
 
+    Optional.of(
+        new BlockWithMetadata<>(
+            parentBlock.getHeader(),
+            parentBlock.getBody().getTransactions(),
+            parentBlock.getBody().getOmmers(),
+            parentBlock.getHeader().getDifficulty(),
+            parentBlock.calculateSize()));
+
+    when(blockchainQueries.blockByHash(parentBlock.getHash()))
+        .thenReturn(
+            Optional.of(
+                new BlockWithMetadata<>(
+                    parentBlock.getHeader(),
+                    Collections.emptyList(),
+                    Collections.emptyList(),
+                    parentBlock.getHeader().getDifficulty(),
+                    parentBlock.calculateSize())));
+
     final JsonRpcSuccessResponse response =
         (JsonRpcSuccessResponse) debugTraceBlock.response(request);
     final Collection<?> result = (Collection<?>) response.getResult();
     assertEquals(2, result.size());
+  }
+
+  @Test
+  public void shouldReturnErrorResponseWhenParenBlockMissing() {
+    Block block =
+        new BlockDataGenerator()
+            .block(
+                BlockDataGenerator.BlockOptions.create()
+                    .setBlockHashFunction(MainnetBlockHashFunction::createHash));
+
+    final Object[] params = new Object[] {block.toRlp().toString()};
+    final JsonRpcRequest request = new JsonRpcRequest("2.0", "debug_traceBlock", params);
+
+    when(blockchainQueries.blockByHash(Mockito.any())).thenReturn(Optional.empty());
+
+    final JsonRpcErrorResponse response = (JsonRpcErrorResponse) debugTraceBlock.response(request);
+    assertEquals(JsonRpcError.PARENT_BLOCK_NOT_FOUND, response.getError());
   }
 }

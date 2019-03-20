@@ -241,7 +241,8 @@ public class JsonRpcMethodsFactory {
           new DebugTraceBlock(
               parameter,
               new BlockTracer(blockReplay),
-              ScheduleBasedBlockHashFunction.create(protocolSchedule)),
+              ScheduleBasedBlockHashFunction.create(protocolSchedule),
+              blockchainQueries),
           new DebugTraceBlockByNumber(parameter, new BlockTracer(blockReplay), blockchainQueries),
           new DebugTraceBlockByHash(parameter, new BlockTracer(blockReplay)));
     }
