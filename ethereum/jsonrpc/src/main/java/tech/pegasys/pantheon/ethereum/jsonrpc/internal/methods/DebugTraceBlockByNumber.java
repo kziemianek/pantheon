@@ -18,7 +18,6 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.JsonRpcRequest;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.parameters.JsonRpcParameter;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTrace;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTracer;
-import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.TransactionTraceParams;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.queries.BlockchainQueries;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcSuccessResponse;
@@ -28,7 +27,7 @@ import tech.pegasys.pantheon.ethereum.vm.DebugOperationTracer;
 import java.util.Collection;
 import java.util.Optional;
 
-public class DebugTraceBlockByNumber implements JsonRpcMethod {
+public class DebugTraceBlockByNumber implements JsonRpcMethod, DebugTraceJsonRpcMethod {
 
   private final JsonRpcParameter parameters;
   private final BlockTracer blockTracer;
@@ -51,13 +50,9 @@ public class DebugTraceBlockByNumber implements JsonRpcMethod {
   @Override
   public JsonRpcResponse response(final JsonRpcRequest request) {
     final Long blockNumber = parameters.required(request.getParams(), 0, Long.class);
-    final Optional<TransactionTraceParams> transactionTraceParams =
-        parameters.optional(request.getParams(), 1, TransactionTraceParams.class);
     Optional<Hash> blockHash = this.blockchain.getBlockHashByNumber(blockNumber);
-    final TraceOptions traceOptions =
-        transactionTraceParams
-            .map(TransactionTraceParams::traceOptions)
-            .orElse(TraceOptions.DEFAULT);
+    final TraceOptions traceOptions = getTraceOptions(request, parameters);
+
     Collection<DebugTraceTransactionResult> results =
         blockHash
             .map(
