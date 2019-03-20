@@ -104,14 +104,6 @@ public class DebugTraceBlockTest {
     when(transaction2Result.getOutput()).thenReturn(BytesValue.fromHexString("1234"));
     when(blockTracer.trace(Mockito.eq(block), any())).thenReturn(Optional.of(blockTrace));
 
-    Optional.of(
-        new BlockWithMetadata<>(
-            parentBlock.getHeader(),
-            parentBlock.getBody().getTransactions(),
-            parentBlock.getBody().getOmmers(),
-            parentBlock.getHeader().getDifficulty(),
-            parentBlock.calculateSize()));
-
     when(blockchainQueries.blockByHash(parentBlock.getHash()))
         .thenReturn(
             Optional.of(
