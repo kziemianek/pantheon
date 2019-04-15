@@ -16,6 +16,7 @@ import tech.pegasys.pantheon.ethereum.core.Hash;
 import tech.pegasys.pantheon.ethereum.debug.TraceOptions;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.JsonRpcRequest;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.parameters.JsonRpcParameter;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.parameters.TransactionTraceParams;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.TransactionTracer;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.queries.BlockchainQueries;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.queries.TransactionWithMetadata;
@@ -26,7 +27,7 @@ import tech.pegasys.pantheon.ethereum.vm.DebugOperationTracer;
 
 import java.util.Optional;
 
-public class DebugTraceTransaction implements JsonRpcMethod, DebugTraceJsonRpcMethod {
+public class DebugTraceTransaction implements JsonRpcMethod {
 
   private final JsonRpcParameter parameters;
   private final TransactionTracer transactionTracer;
@@ -52,7 +53,11 @@ public class DebugTraceTransaction implements JsonRpcMethod, DebugTraceJsonRpcMe
     final Optional<TransactionWithMetadata> transactionWithMetadata =
         blockchain.transactionByHash(hash);
     final Hash blockHash = transactionWithMetadata.get().getBlockHash();
-    final TraceOptions traceOptions = getTraceOptions(request, parameters);
+    final TraceOptions traceOptions =
+        parameters
+            .optional(request.getParams(), 1, TransactionTraceParams.class)
+            .map(TransactionTraceParams::traceOptions)
+            .orElse(TraceOptions.DEFAULT);
 
     final DebugOperationTracer execTracer = new DebugOperationTracer(traceOptions);
 

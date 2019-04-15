@@ -44,8 +44,8 @@ public class BlockReplay {
     this.worldStateArchive = worldStateArchive;
   }
 
-  public BlockTrace block(final Block block, final Action<TransactionTrace> action) {
-    return performActionPerBlockTransaction(
+  public BlockTrace block(final Block block, final TransactionAction<TransactionTrace> action) {
+    return performActionWithBlock(
             block.getHeader(),
             block.getBody(),
             (body, header, blockchain, mutableWorldState, transactionProcessor) -> {
@@ -65,13 +65,13 @@ public class BlockReplay {
         .orElse(null);
   }
 
-  public BlockTrace block(final Hash blockHash, final Action<TransactionTrace> action) {
+  public BlockTrace block(final Hash blockHash, final TransactionAction<TransactionTrace> action) {
     return getBlock(blockHash).map(block -> block(block, action)).orElse(null);
   }
 
   public <T> Optional<T> beforeTransactionInBlock(
-      final Hash blockHash, final Hash transactionHash, final Action<T> action) {
-    return performActionPerBlockTransaction(
+      final Hash blockHash, final Hash transactionHash, final TransactionAction<T> action) {
+    return performActionWithBlock(
         blockHash,
         (body, header, blockchain, mutableWorldState, transactionProcessor) -> {
           final BlockHashLookup blockHashLookup = new BlockHashLookup(header, blockchain);
@@ -96,7 +96,7 @@ public class BlockReplay {
   }
 
   public <T> Optional<T> afterTransactionInBlock(
-      final Hash blockHash, final Hash transactionHash, final Action<T> action) {
+      final Hash blockHash, final Hash transactionHash, final TransactionAction<T> action) {
     return beforeTransactionInBlock(
         blockHash,
         transactionHash,
@@ -114,15 +114,14 @@ public class BlockReplay {
         });
   }
 
-  private <T> Optional<T> performActionPerBlockTransaction(
-      final Hash blockHash, final BlockTransactionAction<T> action) {
+  private <T> Optional<T> performActionWithBlock(
+      final Hash blockHash, final BlockAction<T> action) {
     return getBlock(blockHash)
-        .map(block -> performActionPerBlockTransaction(block.getHeader(), block.getBody(), action))
-        .orElse(Optional.empty());
+        .flatMap(block -> performActionWithBlock(block.getHeader(), block.getBody(), action));
   }
 
-  private <T> Optional<T> performActionPerBlockTransaction(
-      final BlockHeader header, final BlockBody body, final BlockTransactionAction<T> action) {
+  private <T> Optional<T> performActionWithBlock(
+      final BlockHeader header, final BlockBody body, final BlockAction<T> action) {
     if (header == null) {
       return Optional.empty();
     }
@@ -146,7 +145,7 @@ public class BlockReplay {
   private Optional<Block> getBlock(final Hash blockHash) {
     final BlockHeader blockHeader = blockchain.getBlockHeader(blockHash).orElse(null);
     if (blockHeader != null) {
-      BlockBody blockBody = blockchain.getBlockBody(blockHeader.getHash()).orElse(null);
+      final BlockBody blockBody = blockchain.getBlockBody(blockHeader.getHash()).orElse(null);
       if (blockBody != null) {
         return Optional.of(new Block(blockHeader, blockBody));
       }
@@ -155,7 +154,7 @@ public class BlockReplay {
   }
 
   @FunctionalInterface
-  private interface BlockTransactionAction<T> {
+  private interface BlockAction<T> {
     Optional<T> perform(
         BlockBody body,
         BlockHeader blockHeader,
@@ -165,7 +164,7 @@ public class BlockReplay {
   }
 
   @FunctionalInterface
-  public interface Action<T> {
+  public interface TransactionAction<T> {
     T performAction(
         Transaction transaction,
         BlockHeader blockHeader,

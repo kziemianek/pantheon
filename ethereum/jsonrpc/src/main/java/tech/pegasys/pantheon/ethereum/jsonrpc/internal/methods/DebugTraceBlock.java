@@ -17,6 +17,7 @@ import tech.pegasys.pantheon.ethereum.core.BlockHashFunction;
 import tech.pegasys.pantheon.ethereum.debug.TraceOptions;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.JsonRpcRequest;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.parameters.JsonRpcParameter;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.parameters.TransactionTraceParams;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTrace;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockTracer;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.queries.BlockchainQueries;
@@ -26,13 +27,18 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcSuccessResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.DebugTraceTransactionResult;
 import tech.pegasys.pantheon.ethereum.rlp.RLP;
+import tech.pegasys.pantheon.ethereum.rlp.RLPException;
 import tech.pegasys.pantheon.ethereum.vm.DebugOperationTracer;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.util.Collection;
 
-public class DebugTraceBlock implements JsonRpcMethod, DebugTraceJsonRpcMethod {
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+public class DebugTraceBlock implements JsonRpcMethod {
+
+  private static final Logger LOG = LogManager.getLogger();
   private final JsonRpcParameter parameters;
   private final BlockTracer blockTracer;
   private final BlockHashFunction blockHashFunction;
@@ -57,12 +63,21 @@ public class DebugTraceBlock implements JsonRpcMethod, DebugTraceJsonRpcMethod {
   @Override
   public JsonRpcResponse response(final JsonRpcRequest request) {
     final String input = parameters.required(request.getParams(), 0, String.class);
-    final Block block =
-        Block.readFrom(RLP.input(BytesValue.fromHexString(input)), this.blockHashFunction);
-    final TraceOptions traceOptions = getTraceOptions(request, parameters);
+    final Block block;
+    try {
+      block = Block.readFrom(RLP.input(BytesValue.fromHexString(input)), this.blockHashFunction);
+    } catch (final RLPException e) {
+      LOG.debug("Failed to parse block RLP", e);
+      return new JsonRpcErrorResponse(request.getId(), JsonRpcError.INVALID_PARAMS);
+    }
+    final TraceOptions traceOptions =
+        parameters
+            .optional(request.getParams(), 1, TransactionTraceParams.class)
+            .map(TransactionTraceParams::traceOptions)
+            .orElse(TraceOptions.DEFAULT);
 
     if (this.blockchain.blockByHash(block.getHeader().getParentHash()).isPresent()) {
-      Collection<DebugTraceTransactionResult> results =
+      final Collection<DebugTraceTransactionResult> results =
           blockTracer
               .trace(block, new DebugOperationTracer(traceOptions))
               .map(BlockTrace::getTransactionTraces)

@@ -12,6 +12,8 @@
  */
 package tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -36,7 +38,6 @@ import tech.pegasys.pantheon.ethereum.mainnet.TransactionProcessor;
 import tech.pegasys.pantheon.ethereum.vm.ExceptionalHaltReason;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -61,12 +62,12 @@ public class DebugTraceBlockTest {
 
   @Test
   public void shouldReturnCorrectResponse() {
-    Block parentBlock =
+    final Block parentBlock =
         new BlockDataGenerator()
             .block(
                 BlockDataGenerator.BlockOptions.create()
                     .setBlockHashFunction(MainnetBlockHashFunction::createHash));
-    Block block =
+    final Block block =
         new BlockDataGenerator()
             .block(
                 BlockDataGenerator.BlockOptions.create()
@@ -94,10 +95,10 @@ public class DebugTraceBlockTest {
     final TransactionTrace transaction1Trace = mock(TransactionTrace.class);
     final TransactionTrace transaction2Trace = mock(TransactionTrace.class);
 
-    BlockTrace blockTrace = new BlockTrace(Arrays.asList(transaction1Trace, transaction2Trace));
+    final BlockTrace blockTrace = new BlockTrace(asList(transaction1Trace, transaction2Trace));
 
-    when(transaction1Trace.getTraceFrames()).thenReturn(Arrays.asList(traceFrame));
-    when(transaction2Trace.getTraceFrames()).thenReturn(Arrays.asList(traceFrame));
+    when(transaction1Trace.getTraceFrames()).thenReturn(singletonList(traceFrame));
+    when(transaction2Trace.getTraceFrames()).thenReturn(singletonList(traceFrame));
     when(transaction1Trace.getResult()).thenReturn(transaction1Result);
     when(transaction2Trace.getResult()).thenReturn(transaction2Result);
     when(transaction1Result.getOutput()).thenReturn(BytesValue.fromHexString("1234"));
@@ -121,8 +122,8 @@ public class DebugTraceBlockTest {
   }
 
   @Test
-  public void shouldReturnErrorResponseWhenParenBlockMissing() {
-    Block block =
+  public void shouldReturnErrorResponseWhenParentBlockMissing() {
+    final Block block =
         new BlockDataGenerator()
             .block(
                 BlockDataGenerator.BlockOptions.create()
