@@ -37,9 +37,12 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.websocket.methods.WebSocketMethods
 import tech.pegasys.pantheon.ethereum.jsonrpc.websocket.subscription.SubscriptionManager;
 import tech.pegasys.pantheon.ethereum.jsonrpc.websocket.subscription.blockheaders.NewBlockHeadersSubscriptionService;
 import tech.pegasys.pantheon.ethereum.jsonrpc.websocket.subscription.logs.LogsSubscriptionService;
+import tech.pegasys.pantheon.ethereum.jsonrpc.websocket.subscription.pending.PendingTransactionDroppedSubscriptionService;
 import tech.pegasys.pantheon.ethereum.jsonrpc.websocket.subscription.pending.PendingTransactionSubscriptionService;
 import tech.pegasys.pantheon.ethereum.jsonrpc.websocket.subscription.syncing.SyncingSubscriptionService;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
+import tech.pegasys.pantheon.ethereum.p2p.ConnectingToLocalNodeException;
+import tech.pegasys.pantheon.ethereum.p2p.InsufficientPeersPermissioningProvider;
 import tech.pegasys.pantheon.ethereum.p2p.NetworkRunner;
 import tech.pegasys.pantheon.ethereum.p2p.NoopP2PNetwork;
 import tech.pegasys.pantheon.ethereum.p2p.api.P2PNetwork;
@@ -71,6 +74,7 @@ import tech.pegasys.pantheon.util.enode.EnodeURL;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -97,11 +101,15 @@ public class RunnerBuilder {
   private MetricsConfiguration metricsConfiguration;
   private MetricsSystem metricsSystem;
   private Optional<PermissioningConfiguration> permissioningConfiguration = Optional.empty();
-  private Collection<EnodeURL> staticNodes;
+  private Collection<EnodeURL> staticNodes = Collections.emptyList();
 
   private EnodeURL getSelfEnode() {
-    String nodeId = pantheonController.getLocalNodeKeyPair().getPublicKey().toString();
-    return new EnodeURL(nodeId, discoveryHost, listenPort);
+    BytesValue nodeId = pantheonController.getLocalNodeKeyPair().getPublicKey().getEncodedBytes();
+    return EnodeURL.builder()
+        .nodeId(nodeId)
+        .ipAddress(discoveryHost)
+        .listeningPort(listenPort)
+        .build();
   }
 
   public RunnerBuilder vertx(final Vertx vertx) {
@@ -234,7 +242,7 @@ public class RunnerBuilder {
 
     final List<EnodeURL> bootnodesAsEnodeURLs =
         discoveryConfiguration.getBootstrapPeers().stream()
-            .map(p -> new EnodeURL(p.getEnodeURLString()))
+            .map(p -> EnodeURL.fromString(p.getEnodeURLString()))
             .collect(Collectors.toList());
 
     final Optional<LocalPermissioningConfiguration> localPermissioningConfiguration =
@@ -270,7 +278,6 @@ public class RunnerBuilder {
                             keyPair,
                             networkConfig,
                             caps,
-                            synchronizer::hasSufficientPeers,
                             peerBlacklist,
                             metricsSystem,
                             nodeWhitelistController,
@@ -282,6 +289,12 @@ public class RunnerBuilder {
                     : caps -> new NoopP2PNetwork())
             .metricsSystem(metricsSystem)
             .build();
+
+    nodePermissioningController.ifPresent(
+        n ->
+            n.setInsufficientPeersPermissioningProvider(
+                new InsufficientPeersPermissioningProvider(
+                    networkRunner.getNetwork(), getSelfEnode(), bootnodesAsEnodeURLs)));
 
     final TransactionPool transactionPool = pantheonController.getTransactionPool();
     final MiningCoordinator miningCoordinator = pantheonController.getMiningCoordinator();
@@ -304,7 +317,10 @@ public class RunnerBuilder {
     staticNodes.forEach(
         enodeURL -> {
           final Peer peer = DefaultPeer.fromEnodeURL(enodeURL);
-          peerNetwork.addMaintainConnectionPeer(peer);
+          try {
+            peerNetwork.addMaintainConnectionPeer(peer);
+          } catch (ConnectingToLocalNodeException ex) {
+          }
         });
 
     Optional<JsonRpcHttpService> jsonRpcHttpService = Optional.empty();
@@ -323,6 +339,7 @@ public class RunnerBuilder {
               jsonRpcConfiguration.getRpcApis(),
               filterManager,
               accountWhitelistController,
+              nodeWhitelistController,
               privacyParameters);
       jsonRpcHttpService =
           Optional.of(
@@ -346,6 +363,7 @@ public class RunnerBuilder {
               webSocketConfiguration.getRpcApis(),
               filterManager,
               accountWhitelistController,
+              nodeWhitelistController,
               privacyParameters);
 
       final SubscriptionManager subscriptionManager =
@@ -420,6 +438,7 @@ public class RunnerBuilder {
       final Collection<RpcApi> jsonRpcApis,
       final FilterManager filterManager,
       final Optional<AccountWhitelistController> accountWhitelistController,
+      final Optional<NodeLocalConfigPermissioningController> nodeWhitelistController,
       final PrivacyParameters privacyParameters) {
     final Map<String, JsonRpcMethod> methods =
         new JsonRpcMethodsFactory()
@@ -439,6 +458,7 @@ public class RunnerBuilder {
                 jsonRpcApis,
                 filterManager,
                 accountWhitelistController,
+                nodeWhitelistController,
                 privacyParameters);
     methods.putAll(pantheonController.getAdditionalJsonRpcMethods(jsonRpcApis));
     return methods;
@@ -449,7 +469,10 @@ public class RunnerBuilder {
     final SubscriptionManager subscriptionManager = new SubscriptionManager();
     final PendingTransactionSubscriptionService pendingTransactions =
         new PendingTransactionSubscriptionService(subscriptionManager);
+    final PendingTransactionDroppedSubscriptionService pendingTransactionsRemoved =
+        new PendingTransactionDroppedSubscriptionService(subscriptionManager);
     transactionPool.addTransactionListener(pendingTransactions);
+    transactionPool.addTransactionDroppedListener(pendingTransactionsRemoved);
     vertx.deployVerticle(subscriptionManager);
 
     return subscriptionManager;

@@ -52,20 +52,32 @@ public class DebugTraceTransaction implements JsonRpcMethod {
     final Hash hash = parameters.required(request.getParams(), 0, Hash.class);
     final Optional<TransactionWithMetadata> transactionWithMetadata =
         blockchain.transactionByHash(hash);
-    final Hash blockHash = transactionWithMetadata.get().getBlockHash();
-    final TraceOptions traceOptions =
-        parameters
-            .optional(request.getParams(), 1, TransactionTraceParams.class)
-            .map(TransactionTraceParams::traceOptions)
-            .orElse(TraceOptions.DEFAULT);
+    if (transactionWithMetadata.isPresent()) {
+      final TraceOptions traceOptions =
+          parameters
+              .optional(request.getParams(), 1, TransactionTraceParams.class)
+              .map(TransactionTraceParams::traceOptions)
+              .orElse(TraceOptions.DEFAULT);
+      final DebugTraceTransactionResult debugTraceTransactionResult =
+          debugTraceTransactionResult(hash, transactionWithMetadata.get(), traceOptions);
+
+      return new JsonRpcSuccessResponse(request.getId(), debugTraceTransactionResult);
+    } else {
+      return new JsonRpcSuccessResponse(request.getId(), null);
+    }
+  }
+
+  private DebugTraceTransactionResult debugTraceTransactionResult(
+      final Hash hash,
+      final TransactionWithMetadata transactionWithMetadata,
+      final TraceOptions traceOptions) {
+    final Hash blockHash = transactionWithMetadata.getBlockHash();
 
     final DebugOperationTracer execTracer = new DebugOperationTracer(traceOptions);
 
-    final DebugTraceTransactionResult result =
-        transactionTracer
-            .traceTransaction(blockHash, hash, execTracer)
-            .map(DebugTraceTransactionResult::new)
-            .orElse(null);
-    return new JsonRpcSuccessResponse(request.getId(), result);
+    return transactionTracer
+        .traceTransaction(blockHash, hash, execTracer)
+        .map(DebugTraceTransactionResult::new)
+        .orElse(null);
   }
 }

@@ -44,6 +44,7 @@ import tech.pegasys.pantheon.ethereum.p2p.peers.PeerBlacklist;
 import tech.pegasys.pantheon.ethereum.permissioning.LocalPermissioningConfiguration;
 import tech.pegasys.pantheon.ethereum.permissioning.NodeLocalConfigPermissioningController;
 import tech.pegasys.pantheon.ethereum.permissioning.node.NodePermissioningController;
+import tech.pegasys.pantheon.metrics.noop.NoOpMetricsSystem;
 import tech.pegasys.pantheon.util.Subscribers;
 import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
@@ -91,7 +92,7 @@ public class PeerDiscoveryControllerTest {
   private final PeerDiscoveryTestHelper helper = new PeerDiscoveryTestHelper();
   private final String selfEnodeString =
       "enode://5f8a80d14311c39f35f516fa664deaaaa13e85b2f7493f37f6144d86991ec012937307647bd3b9a82abe2974e1407241d54947bbb39763a4cac9f77166ad92a0@192.168.0.10:1111";
-  private final EnodeURL selfEnode = new EnodeURL(selfEnodeString);
+  private final EnodeURL selfEnode = EnodeURL.fromString(selfEnodeString);
 
   @Before
   public void initializeMocks() {
@@ -293,9 +294,7 @@ public class PeerDiscoveryControllerTest {
 
     controller.start();
 
-    assertThat(
-            controller.getPeers().stream()
-                .filter(p -> p.getStatus() == PeerDiscoveryStatus.BONDING))
+    assertThat(controller.getPeers().filter(p -> p.getStatus() == PeerDiscoveryStatus.BONDING))
         .hasSize(3);
 
     // Simulate PONG messages from all peers
@@ -319,12 +318,9 @@ public class PeerDiscoveryControllerTest {
           .send(eq(peers.get(i)), matchPacketOfType(PacketType.FIND_NEIGHBORS));
     }
 
-    assertThat(
-            controller.getPeers().stream()
-                .filter(p -> p.getStatus() == PeerDiscoveryStatus.BONDING))
+    assertThat(controller.getPeers().filter(p -> p.getStatus() == PeerDiscoveryStatus.BONDING))
         .hasSize(0);
-    assertThat(
-            controller.getPeers().stream().filter(p -> p.getStatus() == PeerDiscoveryStatus.BONDED))
+    assertThat(controller.getPeers().filter(p -> p.getStatus() == PeerDiscoveryStatus.BONDED))
         .hasSize(3);
   }
 
@@ -349,9 +345,7 @@ public class PeerDiscoveryControllerTest {
 
     controller.start();
 
-    assertThat(
-            controller.getPeers().stream()
-                .filter(p -> p.getStatus() == PeerDiscoveryStatus.BONDING))
+    assertThat(controller.getPeers().filter(p -> p.getStatus() == PeerDiscoveryStatus.BONDING))
         .hasSize(3);
 
     // Send a PONG packet from peer 1, with an incorrect hash.
@@ -364,9 +358,7 @@ public class PeerDiscoveryControllerTest {
     verify(outboundMessageHandler, never())
         .send(eq(peers.get(1)), matchPacketOfType(PacketType.FIND_NEIGHBORS));
 
-    assertThat(
-            controller.getPeers().stream()
-                .filter(p -> p.getStatus() == PeerDiscoveryStatus.BONDING))
+    assertThat(controller.getPeers().filter(p -> p.getStatus() == PeerDiscoveryStatus.BONDING))
         .hasSize(3);
   }
 
@@ -419,7 +411,7 @@ public class PeerDiscoveryControllerTest {
     assertThat(data.getTarget()).isEqualTo(localPeer.getId());
 
     assertThat(controller.getPeers()).hasSize(1);
-    assertThat(controller.getPeers().stream().findFirst().get().getStatus())
+    assertThat(controller.getPeers().findFirst().get().getStatus())
         .isEqualTo(PeerDiscoveryStatus.BONDED);
   }
 
@@ -941,14 +933,14 @@ public class PeerDiscoveryControllerTest {
     controller.onMessage(pongPacket16, peers.get(16));
 
     assertThat(controller.getPeers()).contains(peers.get(16));
-    assertThat(controller.getPeers().size()).isEqualTo(16);
+    assertThat(controller.getPeers().collect(Collectors.toList())).hasSize(16);
     assertThat(evictedPeerFromBucket(bootstrapPeers, controller)).isTrue();
   }
 
   private boolean evictedPeerFromBucket(
       final List<DiscoveryPeer> peers, final PeerDiscoveryController controller) {
     for (final DiscoveryPeer peer : peers) {
-      if (!controller.getPeers().contains(peer)) {
+      if (controller.getPeers().noneMatch(candidate -> candidate.equals(peer))) {
         return true;
       }
     }
@@ -1325,7 +1317,8 @@ public class PeerDiscoveryControllerTest {
               whitelist,
               nodePermissioningController,
               peerBondedObservers,
-              peerDroppedObservers));
+              peerDroppedObservers,
+              new NoOpMetricsSystem()));
     }
   }
 }

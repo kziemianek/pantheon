@@ -61,6 +61,7 @@ import tech.pegasys.pantheon.ethereum.core.Synchronizer;
 import tech.pegasys.pantheon.ethereum.core.TransactionPool;
 import tech.pegasys.pantheon.ethereum.core.Util;
 import tech.pegasys.pantheon.ethereum.eth.EthProtocol;
+import tech.pegasys.pantheon.ethereum.eth.EthereumWireProtocolConfiguration;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthContext;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthProtocolManager;
 import tech.pegasys.pantheon.ethereum.eth.sync.DefaultSynchronizer;
@@ -104,6 +105,7 @@ public class IbftPantheonController implements PantheonController<IbftContext> {
   private final TransactionPool transactionPool;
   private final MiningCoordinator ibftMiningCoordinator;
   private final Runnable closer;
+  private final PrivacyParameters privacyParameters;
 
   private IbftPantheonController(
       final ProtocolSchedule<IbftContext> protocolSchedule,
@@ -116,6 +118,7 @@ public class IbftPantheonController implements PantheonController<IbftContext> {
       final KeyPair keyPair,
       final TransactionPool transactionPool,
       final MiningCoordinator ibftMiningCoordinator,
+      final PrivacyParameters privacyParameters,
       final Runnable closer) {
     this.protocolSchedule = protocolSchedule;
     this.context = context;
@@ -127,6 +130,7 @@ public class IbftPantheonController implements PantheonController<IbftContext> {
     this.keyPair = keyPair;
     this.transactionPool = transactionPool;
     this.ibftMiningCoordinator = ibftMiningCoordinator;
+    this.privacyParameters = privacyParameters;
     this.closer = closer;
   }
 
@@ -134,15 +138,17 @@ public class IbftPantheonController implements PantheonController<IbftContext> {
       final StorageProvider storageProvider,
       final GenesisConfigFile genesisConfig,
       final SynchronizerConfiguration syncConfig,
+      final EthereumWireProtocolConfiguration ethereumWireProtocolConfiguration,
       final MiningParameters miningParams,
       final int networkId,
       final KeyPair nodeKeys,
       final Path dataDirectory,
       final MetricsSystem metricsSystem,
       final Clock clock,
-      final int maxPendingTransactions) {
+      final int maxPendingTransactions,
+      final PrivacyParameters privacyParameters) {
     final ProtocolSchedule<IbftContext> protocolSchedule =
-        IbftProtocolSchedule.create(genesisConfig.getConfigOptions());
+        IbftProtocolSchedule.create(genesisConfig.getConfigOptions(), privacyParameters);
     final GenesisState genesisState = GenesisState.fromConfig(genesisConfig, protocolSchedule);
 
     final BlockInterface blockInterface = new IbftBlockInterface();
@@ -177,7 +183,8 @@ public class IbftPantheonController implements PantheonController<IbftContext> {
             syncConfig.downloaderParallelism(),
             syncConfig.transactionsParallelism(),
             syncConfig.computationParallelism(),
-            metricsSystem);
+            metricsSystem,
+            ethereumWireProtocolConfiguration);
     final SubProtocol ethSubProtocol = EthProtocol.get();
 
     final EthContext ethContext = ethProtocolManager.ethContext();
@@ -193,11 +200,17 @@ public class IbftPantheonController implements PantheonController<IbftContext> {
             ethProtocolManager.ethContext(),
             syncState,
             dataDirectory,
+            clock,
             metricsSystem);
 
     final TransactionPool transactionPool =
         TransactionPoolFactory.createTransactionPool(
-            protocolSchedule, protocolContext, ethContext, clock, maxPendingTransactions);
+            protocolSchedule,
+            protocolContext,
+            ethContext,
+            clock,
+            maxPendingTransactions,
+            metricsSystem);
 
     final IbftEventQueue ibftEventQueue = new IbftEventQueue(ibftConfig.getMessageQueueLimit());
 
@@ -299,6 +312,9 @@ public class IbftPantheonController implements PantheonController<IbftContext> {
           }
           try {
             storageProvider.close();
+            if (privacyParameters.isEnabled()) {
+              privacyParameters.getPrivateStorageProvider().close();
+            }
           } catch (final IOException e) {
             LOG.error("Failed to close storage provider", e);
           }
@@ -315,6 +331,7 @@ public class IbftPantheonController implements PantheonController<IbftContext> {
         nodeKeys,
         transactionPool,
         ibftMiningCoordinator,
+        privacyParameters,
         closer);
   }
 
@@ -362,7 +379,7 @@ public class IbftPantheonController implements PantheonController<IbftContext> {
 
   @Override
   public PrivacyParameters getPrivacyParameters() {
-    return PrivacyParameters.noPrivacy();
+    return privacyParameters;
   }
 
   @Override

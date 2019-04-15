@@ -32,7 +32,8 @@ public class IbftProtocolSchedule {
 
   private static final int DEFAULT_CHAIN_ID = 1;
 
-  public static ProtocolSchedule<IbftContext> create(final GenesisConfigOptions config) {
+  public static ProtocolSchedule<IbftContext> create(
+      final GenesisConfigOptions config, final PrivacyParameters privacyParameters) {
     final IbftConfigOptions ibftConfig = config.getIbftLegacyConfigOptions();
     final long blockPeriod = ibftConfig.getBlockPeriodSeconds();
 
@@ -40,8 +41,12 @@ public class IbftProtocolSchedule {
             config,
             DEFAULT_CHAIN_ID,
             builder -> applyIbftChanges(blockPeriod, builder),
-            PrivacyParameters.noPrivacy())
+            privacyParameters)
         .createProtocolSchedule();
+  }
+
+  public static ProtocolSchedule<IbftContext> create(final GenesisConfigOptions config) {
+    return create(config, PrivacyParameters.DEFAULT);
   }
 
   private static ProtocolSpecBuilder<IbftContext> applyIbftChanges(

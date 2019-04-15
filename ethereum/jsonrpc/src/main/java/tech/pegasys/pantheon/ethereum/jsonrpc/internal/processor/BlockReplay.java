@@ -44,7 +44,7 @@ public class BlockReplay {
     this.worldStateArchive = worldStateArchive;
   }
 
-  public BlockTrace block(final Block block, final Action<TransactionTrace> action) {
+  public BlockTrace block(final Block block, final TransactionAction<TransactionTrace> action) {
     return performActionWithBlock(
             block.getHeader(),
             block.getBody(),
@@ -65,12 +65,12 @@ public class BlockReplay {
         .orElse(null);
   }
 
-  public BlockTrace block(final Hash blockHash, final Action<TransactionTrace> action) {
+  public BlockTrace block(final Hash blockHash, final TransactionAction<TransactionTrace> action) {
     return getBlock(blockHash).map(block -> block(block, action)).orElse(null);
   }
 
   public <T> Optional<T> beforeTransactionInBlock(
-      final Hash blockHash, final Hash transactionHash, final Action<T> action) {
+      final Hash blockHash, final Hash transactionHash, final TransactionAction<T> action) {
     return performActionWithBlock(
         blockHash,
         (body, header, blockchain, mutableWorldState, transactionProcessor) -> {
@@ -88,7 +88,8 @@ public class BlockReplay {
                   header,
                   transaction,
                   spec.getMiningBeneficiaryCalculator().calculateBeneficiary(header),
-                  blockHashLookup);
+                  blockHashLookup,
+                  false);
             }
           }
           return Optional.empty();
@@ -96,7 +97,7 @@ public class BlockReplay {
   }
 
   public <T> Optional<T> afterTransactionInBlock(
-      final Hash blockHash, final Hash transactionHash, final Action<T> action) {
+      final Hash blockHash, final Hash transactionHash, final TransactionAction<T> action) {
     return beforeTransactionInBlock(
         blockHash,
         transactionHash,
@@ -108,7 +109,8 @@ public class BlockReplay {
               blockHeader,
               transaction,
               spec.getMiningBeneficiaryCalculator().calculateBeneficiary(blockHeader),
-              new BlockHashLookup(blockHeader, blockchain));
+              new BlockHashLookup(blockHeader, blockchain),
+              false);
           return action.performAction(
               transaction, blockHeader, blockchain, worldState, transactionProcessor);
         });
@@ -164,7 +166,7 @@ public class BlockReplay {
   }
 
   @FunctionalInterface
-  public interface Action<T> {
+  public interface TransactionAction<T> {
     T performAction(
         Transaction transaction,
         BlockHeader blockHeader,

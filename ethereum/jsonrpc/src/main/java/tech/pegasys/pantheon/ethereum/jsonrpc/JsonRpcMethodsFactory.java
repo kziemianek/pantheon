@@ -99,6 +99,7 @@ import tech.pegasys.pantheon.ethereum.mainnet.ScheduleBasedBlockHashFunction;
 import tech.pegasys.pantheon.ethereum.p2p.api.P2PNetwork;
 import tech.pegasys.pantheon.ethereum.p2p.wire.Capability;
 import tech.pegasys.pantheon.ethereum.permissioning.AccountWhitelistController;
+import tech.pegasys.pantheon.ethereum.permissioning.NodeLocalConfigPermissioningController;
 import tech.pegasys.pantheon.ethereum.privacy.PrivateTransactionHandler;
 import tech.pegasys.pantheon.ethereum.transaction.TransactionSimulator;
 import tech.pegasys.pantheon.ethereum.worldstate.WorldStateArchive;
@@ -131,6 +132,7 @@ public class JsonRpcMethodsFactory {
       final Collection<RpcApi> rpcApis,
       final FilterManager filterManager,
       final Optional<AccountWhitelistController> accountsWhitelistController,
+      final Optional<NodeLocalConfigPermissioningController> nodeWhitelistController,
       final PrivacyParameters privacyParameters) {
     final BlockchainQueries blockchainQueries =
         new BlockchainQueries(blockchain, worldStateArchive);
@@ -148,6 +150,7 @@ public class JsonRpcMethodsFactory {
         metricsSystem,
         supportedCapabilities,
         accountsWhitelistController,
+        nodeWhitelistController,
         rpcApis,
         privacyParameters);
   }
@@ -166,6 +169,7 @@ public class JsonRpcMethodsFactory {
       final MetricsSystem metricsSystem,
       final Set<Capability> supportedCapabilities,
       final Optional<AccountWhitelistController> accountsWhitelistController,
+      final Optional<NodeLocalConfigPermissioningController> nodeWhitelistController,
       final Collection<RpcApi> rpcApis,
       final PrivacyParameters privacyParameters) {
     final Map<String, JsonRpcMethod> enabledMethods = new HashMap<>();
@@ -273,14 +277,13 @@ public class JsonRpcMethodsFactory {
     if (rpcApis.contains(RpcApis.PERM)) {
       addMethods(
           enabledMethods,
-          new PermAddNodesToWhitelist(p2pNetwork, parameter),
-          new PermRemoveNodesFromWhitelist(p2pNetwork, parameter),
-          new PermGetNodesWhitelist(p2pNetwork),
+          new PermAddNodesToWhitelist(nodeWhitelistController, parameter),
+          new PermRemoveNodesFromWhitelist(nodeWhitelistController, parameter),
+          new PermGetNodesWhitelist(nodeWhitelistController),
           new PermGetAccountsWhitelist(accountsWhitelistController),
           new PermAddAccountsToWhitelist(accountsWhitelistController, parameter),
           new PermRemoveAccountsFromWhitelist(accountsWhitelistController, parameter),
-          new PermReloadPermissionsFromFile(
-              accountsWhitelistController, p2pNetwork.getNodeWhitelistController()));
+          new PermReloadPermissionsFromFile(accountsWhitelistController, nodeWhitelistController));
     }
     if (rpcApis.contains(RpcApis.ADMIN)) {
       addMethods(
@@ -300,7 +303,7 @@ public class JsonRpcMethodsFactory {
           enabledMethods,
           new EeaGetTransactionReceipt(
               blockchainQueries,
-              new Enclave(privacyParameters.getUrl()),
+              new Enclave(privacyParameters.getEnclaveUri()),
               parameter,
               privacyParameters));
     }

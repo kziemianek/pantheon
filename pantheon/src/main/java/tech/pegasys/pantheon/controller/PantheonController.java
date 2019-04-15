@@ -23,6 +23,7 @@ import tech.pegasys.pantheon.ethereum.core.MiningParameters;
 import tech.pegasys.pantheon.ethereum.core.PrivacyParameters;
 import tech.pegasys.pantheon.ethereum.core.Synchronizer;
 import tech.pegasys.pantheon.ethereum.core.TransactionPool;
+import tech.pegasys.pantheon.ethereum.eth.EthereumWireProtocolConfiguration;
 import tech.pegasys.pantheon.ethereum.eth.sync.SynchronizerConfiguration;
 import tech.pegasys.pantheon.ethereum.jsonrpc.RpcApi;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.JsonRpcMethod;
@@ -45,6 +46,7 @@ public interface PantheonController<C> extends Closeable {
   static PantheonController<?> fromConfig(
       final GenesisConfigFile genesisConfigFile,
       final SynchronizerConfiguration syncConfig,
+      final EthereumWireProtocolConfiguration ethereumWireProtocolConfiguration,
       final StorageProvider storageProvider,
       final int networkId,
       final MiningParameters miningParameters,
@@ -63,6 +65,7 @@ public interface PantheonController<C> extends Closeable {
           genesisConfigFile,
           MainnetProtocolSchedule.fromConfig(configOptions, privacyParameters),
           syncConfig,
+          ethereumWireProtocolConfiguration,
           miningParameters,
           networkId,
           nodeKeys,
@@ -76,36 +79,42 @@ public interface PantheonController<C> extends Closeable {
           storageProvider,
           genesisConfigFile,
           syncConfig,
+          ethereumWireProtocolConfiguration,
           miningParameters,
           networkId,
           nodeKeys,
           dataDirectory,
           metricsSystem,
           clock,
-          maxPendingTransactions);
+          maxPendingTransactions,
+          privacyParameters);
     } else if (configOptions.isIbftLegacy()) {
       return IbftLegacyPantheonController.init(
           storageProvider,
           genesisConfigFile,
           syncConfig,
+          ethereumWireProtocolConfiguration,
           networkId,
           nodeKeys,
           dataDirectory,
           metricsSystem,
           clock,
-          maxPendingTransactions);
+          maxPendingTransactions,
+          privacyParameters);
     } else if (configOptions.isClique()) {
       return CliquePantheonController.init(
           storageProvider,
           genesisConfigFile,
           syncConfig,
+          ethereumWireProtocolConfiguration,
           miningParameters,
           networkId,
           nodeKeys,
           dataDirectory,
           metricsSystem,
           clock,
-          maxPendingTransactions);
+          maxPendingTransactions,
+          privacyParameters);
     } else {
       throw new IllegalArgumentException("Unknown consensus mechanism defined");
     }

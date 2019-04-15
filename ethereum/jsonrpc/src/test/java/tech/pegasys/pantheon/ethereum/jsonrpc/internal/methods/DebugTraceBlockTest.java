@@ -132,7 +132,7 @@ public class DebugTraceBlockTest {
     final Object[] params = new Object[] {block.toRlp().toString()};
     final JsonRpcRequest request = new JsonRpcRequest("2.0", "debug_traceBlock", params);
 
-    when(blockchainQueries.blockByHash(Mockito.any())).thenReturn(Optional.empty());
+    when(blockchainQueries.blockByHash(any())).thenReturn(Optional.empty());
 
     final JsonRpcErrorResponse response = (JsonRpcErrorResponse) debugTraceBlock.response(request);
     assertEquals(JsonRpcError.PARENT_BLOCK_NOT_FOUND, response.getError());

@@ -36,6 +36,8 @@ import tech.pegasys.pantheon.ethereum.core.MiningParameters;
 import tech.pegasys.pantheon.ethereum.core.PendingTransactions;
 import tech.pegasys.pantheon.ethereum.core.Util;
 import tech.pegasys.pantheon.ethereum.core.Wei;
+import tech.pegasys.pantheon.metrics.MetricsSystem;
+import tech.pegasys.pantheon.metrics.noop.NoOpMetricsSystem;
 import tech.pegasys.pantheon.testutil.TestClock;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
@@ -57,6 +59,7 @@ public class CliqueMinerExecutorTest {
   private final List<Address> validatorList = Lists.newArrayList();
   private ProtocolContext<CliqueContext> cliqueProtocolContext;
   private BlockHeaderTestFixture blockHeaderBuilder;
+  private final MetricsSystem metricsSystem = new NoOpMetricsSystem();
 
   @Before
   public void setup() {
@@ -87,7 +90,7 @@ public class CliqueMinerExecutorTest {
             cliqueProtocolContext,
             Executors.newSingleThreadExecutor(),
             CliqueProtocolSchedule.create(GENESIS_CONFIG_OPTIONS, proposerKeyPair),
-            new PendingTransactions(1, TestClock.fixed()),
+            new PendingTransactions(1, TestClock.fixed(), metricsSystem),
             proposerKeyPair,
             new MiningParameters(AddressHelpers.ofValue(1), Wei.ZERO, wrappedVanityData, false),
             mock(CliqueBlockScheduler.class),
@@ -117,7 +120,7 @@ public class CliqueMinerExecutorTest {
             cliqueProtocolContext,
             Executors.newSingleThreadExecutor(),
             CliqueProtocolSchedule.create(GENESIS_CONFIG_OPTIONS, proposerKeyPair),
-            new PendingTransactions(1, TestClock.fixed()),
+            new PendingTransactions(1, TestClock.fixed(), metricsSystem),
             proposerKeyPair,
             new MiningParameters(AddressHelpers.ofValue(1), Wei.ZERO, wrappedVanityData, false),
             mock(CliqueBlockScheduler.class),

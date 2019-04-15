@@ -17,29 +17,18 @@ description: Pantheon JSON-RPC API methods reference
 
 ### admin_addPeer
 
-Adds a node to the list of tracked static nodes. The node attempts to maintain connectivity to tracked static nodes.
-If the remote connection goes down, the node attempts to reconnect every 60 seconds. 
+Adds a [static node](../Configuring-Pantheon/Networking/Managing-Peers.md#static-nodes).  
+
+!!! caution 
+    If connections are timing out, ensure the node ID in the [enode URL](../Configuring-Pantheon/Node-Keys.md#enode-url) is correct. 
 
 **Parameters**
 
-`string` : Enode of peer to add
-
-The enode is `enode://<id>@<host:port>` where:
-             
-* `<id>` is the node public key excluding the initial 0x. 
-* `<host:port>` is the host and port the node is listening on for P2P peer discovery. 
-   Specified by the [`--p2p-host`](../Reference/Pantheon-CLI-Syntax.md#p2p-host) and 
-   [`--p2p-port`](../Reference/Pantheon-CLI-Syntax.md#p2p-port) options.
-             
-!!! example
-    If the [`--p2p-host`](../Reference/Pantheon-CLI-Syntax.md#p2p-host) or [`--p2p-port`](../Reference/Pantheon-CLI-Syntax.md#p2p-port) options are not specified and the node public key is `0xc35c3ec90a8a51fd5703594c6303382f3ae6b2ecb9589bab2c04b3794f2bc3fc2631dabb0c08af795787a6c004d8f532230ae6e9925cbbefb0b28b79295d615f`            
-    The enode URL is:
-    `enode://c35c3ec90a8a51fd5703594c6303382f3ae6b2ecb9589bab2c04b3794f2bc3fc2631dabb0c08af795787a6c004d8f532230ae6e9925cbbefb0b28b79295d615f@127.0.0.1:30303` 
- 
+`string` : [Enode URL](../Configuring-Pantheon/Node-Keys.md#enode-url) of peer to add
 
 **Returns**
 
-`result` : `boolean` - `true` if peer added or `false` if peer already on list of static nodes. 
+`result` : `boolean` - `true` if peer added or `false` if peer already a [static node](../Configuring-Pantheon/Networking/Managing-Peers.md#static-nodes). 
 
 !!! example
     ```bash tab="curl HTTP request"
@@ -77,7 +66,7 @@ Properties of the node object are:
 * `listenAddr` - Host and port for the node
 * `name` - Client name
 * `id` - [Node public key](../Configuring-Pantheon/Node-Keys.md#node-public-key)
-* `ports` - Peer discovery and listening [ports](../Configuring-Pantheon/Networking.md#port-configuration) 
+* `ports` - Peer discovery and listening [ports](../Configuring-Pantheon/Networking/Managing-Peers.md#port-configuration) 
 * `protocols` - List of objects containing information for each Ethereum sub-protocol 
 
 !!! note
@@ -189,6 +178,36 @@ match the hex value for `port`. The remote address depends on which node initiat
       ]
     }
     ```
+
+### admin_removePeer
+
+Removes a [static node](../Configuring-Pantheon/Networking/Managing-Peers.md#static-nodes).  
+
+**Parameters**
+
+`string` : [Enode URL](../Configuring-Pantheon/Node-Keys.md#enode-url) of peer to remove
+
+**Returns**
+
+`result` : `boolean` - `true` if peer removed or `false` if peer not a [static node](../Configuring-Pantheon/Networking/Managing-Peers.md#static-nodes)). 
+
+!!! example
+    ```bash tab="curl HTTP request"
+    curl -X POST --data '{"jsonrpc":"2.0","method":"admin_removePeer","params":["enode://f59c0ab603377b6ec88b89d5bb41b98fc385030ab1e4b03752db6f7dab364559d92c757c13116ae6408d2d33f0138e7812eb8b696b2a22fe3332c4b5127b22a3@127.0.0.1:30304"],"id":1}' http://127.0.0.1:8545
+    ```
+    
+    ```bash tab="wscat WS request"
+    {"jsonrpc":"2.0","method":"admin_removePeer","params":["enode://f59c0ab603377b6ec88b89d5bb41b98fc385030ab1e4b03752db6f7dab364559d92c757c13116ae6408d2d33f0138e7812eb8b696b2a22fe3332c4b5127b22a3@127.0.0.1:30304"],"id":1}
+    ```
+    
+    ```json tab="JSON result"
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": true
+    }
+    ```
+
 
 ## Web3 Methods
 
@@ -354,7 +373,7 @@ None
 
 ### net_enode
 
-Returns the client enode (if active).
+Returns the [enode URL](../Configuring-Pantheon/Node-Keys.md#enode-url).
 
 **Parameters**
 
@@ -366,19 +385,19 @@ None
 
 !!! example
     ```bash tab="curl HTTP request"
-    curl -X POST --data '{"jsonrpc":"2.0","method":"net_enode","params":[],"id":53}' localhost:8545
+    curl -X POST --data '{"jsonrpc":"2.0","method":"net_enode","params":[],"id":1}' http://127.0.0.1:8545
     ```
     
     ```bash tab="wscat WS request"
-    {"jsonrpc":"2.0","method":"net_enode","params":[],"id":53}
+    {"jsonrpc":"2.0","method":"net_enode","params":[],"id":1}
     ```
     
     ```json tab="JSON result"
     {
-  "jsonrpc" : "2.0",
-  "id" : 53,
-  "result" : "enode://6a63160d0ccef5e4986d270937c6c8d60a9a4d3b25471cda960900d037c61988ea14da67f69dbfb3497c465d0de1f001bb95598f74b68a39a5156a608c42fa1b@127.0.0.1:30303"
-}
+      "jsonrpc" : "2.0",
+      "id" : 1,
+      "result" : "enode://6a63160d0ccef5e4986d270937c6c8d60a9a4d3b25471cda960900d037c61988ea14da67f69dbfb3497c465d0de1f001bb95598f74b68a39a5156a608c42fa1b@127.0.0.1:30303"
+    }
     ```
 	
 ## Eth Methods
@@ -887,9 +906,9 @@ Returns the code of the smart contract at the specified address. Compiled smart 
 
 ### eth_sendRawTransaction
 
-Sends a [signed transaction](../Using-Pantheon/Transactions.md). A transaction can send ether, deploy a contract, or interact with a contract.  
+Sends a [signed transaction](../Using-Pantheon/Transactions/Transactions.md). A transaction can send ether, deploy a contract, or interact with a contract.  
 
-You can interact with contracts using [eth_sendRawTransaction or eth_call](../Using-Pantheon/Transactions.md#eth_call-or-eth_sendrawtransaction).
+You can interact with contracts using [eth_sendRawTransaction or eth_call](../Using-Pantheon/Transactions/Transactions.md#eth_call-or-eth_sendrawtransaction).
 
 To avoid exposing your private key, create signed transactions offline and send the signed transaction data using `eth_sendRawTransaction`. 
 
@@ -903,7 +922,7 @@ To avoid exposing your private key, create signed transactions offline and send 
 `params: ["0xf869018203e882520894f17f52151ebef6c7334fad080c5704d77216b732881bc16d674ec80000801ba02da1c48b670996dcb1f447ef9ef00b33033c48a4fe938f420bec3e56bfd24071a062e0aa78a81bf0290afbc3a9d8e9a068e6d74caa66c5e0fa8a46deaae96b0833"]`
 
 !!! note
-    [Creating and Sending Transactions](../Using-Pantheon/Transactions.md) includes examples of creating signed transactions using the [web3.js](https://github.com/ethereum/web3.js/) library.
+    [Creating and Sending Transactions](../Using-Pantheon/Transactions/Transactions.md) includes examples of creating signed transactions using the [web3.js](https://github.com/ethereum/web3.js/) library.
 
 **Returns**
 
@@ -930,7 +949,7 @@ To avoid exposing your private key, create signed transactions offline and send 
 
 Invokes a contract function locally and does not change the state of the blockchain. 
 
-You can interact with contracts using [eth_sendRawTransaction or eth_call](../Using-Pantheon/Transactions.md#eth_call-or-eth_sendrawtransaction).
+You can interact with contracts using [eth_sendRawTransaction or eth_call](../Using-Pantheon/Transactions/Transactions.md#eth_call-or-eth_sendrawtransaction).
 
 **Parameters**
 
@@ -2297,7 +2316,7 @@ Proposes [adding or removing a validator](../Consensus-Protocols/IBFT.md#adding-
 
 ### perm_addAccountsToWhitelist
 
-Adds accounts (participants) to the [accounts whitelist](../Permissions/Permissioning.md#account-whitelisting). 
+Adds accounts (participants) to the [accounts whitelist](../Permissions/Local-Permissioning.md#account-whitelisting). 
 
 **Parameters** 
 
@@ -2330,7 +2349,7 @@ including invalid account addresses.
     
 ### perm_getAccountsWhitelist
 
-Lists accounts (participants) in the [accounts whitelist](../Permissions/Permissioning.md#account-whitelisting). 
+Lists accounts (participants) in the [accounts whitelist](../Permissions/Local-Permissioning.md#account-whitelisting). 
 
 **Parameters** 
 
@@ -2362,7 +2381,7 @@ None
     
 ### perm_removeAccountsFromWhitelist
 
-Removes accounts (participants) from the [accounts whitelist](../Permissions/Permissioning.md#account-whitelisting). 
+Removes accounts (participants) from the [accounts whitelist](../Permissions/Local-Permissioning.md#account-whitelisting). 
 
 **Parameters** 
 
@@ -2394,7 +2413,7 @@ including invalid account addresses.
     ```
 ### perm_addNodesToWhitelist
 
-Adds nodes to the [nodes whitelist](../Permissions/Permissioning.md#node-whitelisting). 
+Adds nodes to the [nodes whitelist](../Permissions/Local-Permissioning.md#node-whitelisting). 
 
 **Parameters** 
 
@@ -2427,7 +2446,7 @@ including invalid enode URLs.
     
 ### perm_getNodesWhitelist
 
-Lists nodes in the [nodes whitelist](../Permissions/Permissioning.md#node-whitelisting). 
+Lists nodes in the [nodes whitelist](../Permissions/Local-Permissioning.md#node-whitelisting). 
 
 **Parameters** 
 
@@ -2459,7 +2478,7 @@ None
     
 ### perm_removeNodesFromWhitelist
 
-Removes nodes from the [nodes whitelist](../Permissions/Permissioning.md#node-whitelisting). 
+Removes nodes from the [nodes whitelist](../Permissions/Local-Permissioning.md#node-whitelisting). 
 
 **Parameters** 
 
@@ -2492,7 +2511,7 @@ including invalid enode URLs.
     
 ### perm_reloadPermissionsFromFile
 
-Reloads the accounts and nodes whitelists from the [permissions configuration file](../Permissions/Permissioning.md#permissions-configuration-file). 
+Reloads the accounts and nodes whitelists from the [permissions configuration file](../Permissions/Local-Permissioning.md#permissions-configuration-file). 
 
 **Parameters** 
 
@@ -2518,7 +2537,146 @@ None
         "result": "Success"
     }
     ```
+
+## Txpool Methods 
+
+!!! note
+    The `TXPOOL` API methods are not enabled by default. Use the [`--rpc-http-api`](Pantheon-CLI-Syntax.md#rpc-http-api) 
+    or [`--rpc-ws-api`](Pantheon-CLI-Syntax.md#rpc-ws-api) options to enable the `TXPOOL` API methods.
+
+### txpool_pantheonTransactions
+
+Lists transactions in the node transaction pool. 
+
+**Parameters** 
+
+None
+
+**Returns** 
+
+`result` - List of transactions 
+
+!!! example
+    ```bash tab="curl HTTP request"
+    curl -X POST --data '{"jsonrpc":"2.0","method":"txpool_pantheonTransactions","params":[],"id":1}' http://127.0.0.1:8545
+    ```
     
+    ```bash tab="wscat WS request"
+    {"jsonrpc":"2.0","method":"txpool_pantheonTransactions","params":[],"id":1}
+    ```
+    
+    ```json tab="JSON result"
+    {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": [
+            {
+                "hash": "0x8a66830098be4006a3f63a03b6e9b67aa721e04bd6b46d420b8f1937689fb4f1",
+                "isReceivedFromLocalSource": true,
+                "addedToPoolAt": "2019-03-21T01:35:50.911Z"
+            },
+            {
+                "hash": "0x41ee803c3987ceb5bcea0fad7a76a8106a2a6dd654409007d9931032ea54579b",
+                "isReceivedFromLocalSource": true,
+                "addedToPoolAt": "2019-03-21T01:36:00.374Z"
+            }
+        ]
+    }
+    ``` 
+            
+## EEA Methods
+
+!!!note
+    EEA methods are for [privacy](../Privacy/Privacy-Overview.md) features. Privacy features are under 
+    development and will be available in v1.1.  
+
+!!! note
+    The `EEA` API methods are not enabled by default. Use the [`--rpc-http-api`](Pantheon-CLI-Syntax.md#rpc-http-api) 
+    or [`--rpc-ws-api`](Pantheon-CLI-Syntax.md#rpc-ws-api) options to enable the `EEA` API methods.
+
+### eea_sendRawTransaction
+
+Creates a private transaction from a signed transaction, generates the transaction hash and submits it 
+to the transaction pool, and returns the transaction hash of the Privacy Marker Transaction.
+
+The signed transaction passed as an input parameter includes the `privateFrom`, `privateFor`, and `restriction` fields.
+
+To avoid exposing your private key, create signed transactions offline and send the signed transaction 
+data using `eea_sendRawTransaction`.
+
+!!! important
+    For production systems requiring private transactions, we recommend using a network 
+    with a consensus mechanism supporting transaction finality. For example, [IBFT 2.0](../Consensus-Protocols/IBFT.md). 
+
+**Parameters**
+
+`data` -  Signed RLP-encoded private transaction. For example:
+
+`params: ["0xf869018203e882520894f17f52151ebef6c7334fad080c5704d77216b732881bc16d674ec80000801ba02da1c48b670996dcb1f447ef9ef00b33033c48a4fe938f420bec3e56bfd24071a062e0aa78a81bf0290afbc3a9d8e9a068e6d74caa66c5e0fa8a46deaae96b0833"]`
+
+**Returns**
+
+`result` : `data` - 32-byte transaction hash
+
+!!! tip
+    If creating a contract, use [eea_getTransactionReceipt](#eea_gettransactionreceipt) to retrieve the contract 
+    address after the transaction is finalized.
+
+!!! example 
+    ```bash tab="curl HTTP request"
+    curl -X POST --data '{"jsonrpc":"2.0","method":"eea_sendRawTransaction","params": ["0xf869018203e882520894f17f52151ebef6c7334fad080c5704d77216b732881bc16d674ec80000801ba02da1c48b670996dcb1f447ef9ef00b33033c48a4fe938f420bec3e56bfd24071a062e0aa78a81bf0290afbc3a9d8e9a068e6d74caa66c5e0fa8a46deaae96b0833"], "id":1}' http://127.0.0.1:8545
+    ```
+        
+    ```bash tab="wscat WS request"
+    {"jsonrpc":"2.0","method":"eea_sendRawTransaction","params": ["0xf869018203e882520894f17f52151ebef6c7334fad080c5704d77216b732881bc16d674ec80000801ba02da1c48b670996dcb1f447ef9ef00b33033c48a4fe938f420bec3e56bfd24071a062e0aa78a81bf0290afbc3a9d8e9a068e6d74caa66c5e0fa8a46deaae96b0833"], "id":1}
+    ```
+        
+    ```json tab="JSON result"
+    {
+      "id":1,
+      "jsonrpc": "2.0",
+      "result": "0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331"
+    }
+    ```
+
+### eea_getTransactionReceipt
+
+Returns information about the private transaction after the transaction was mined. Receipts for pending transactions 
+are not available.
+
+**Parameters**
+
+`data` - 32-byte hash of a transaction.
+
+`data` - Orion node public key
+
+**Returns**
+
+`Object` - [Private Transaction receipt object](JSON-RPC-API-Objects.md#private-transaction-receipt-object), or `null` if no receipt found.
+
+!!! example 
+    ```bash tab="curl HTTP request"
+    curl -X POST --data '{"jsonrpc":"2.0","method":"eea_getTransactionReceipt","params":["0xf3ab9693ad92e277bf785e1772f29fb1864904bbbe87b0470455ddb082caab9d", "g59BmTeJIn7HIcnq8VQWgyh/pDbvbt2eyP0Ii60aDDw="],"id":1}' http://127.0.0.1:8545
+    ```
+            
+    ```bash tab="wscat WS request"
+    {"jsonrpc":"2.0","method":"eea_getTransactionReceipt","params":["0xf3ab9693ad92e277bf785e1772f29fb1864904bbbe87b0470455ddb082caab9d", "g59BmTeJIn7HIcnq8VQWgyh/pDbvbt2eyP0Ii60aDDw="],"id":1}
+    ```
+            
+    ```json tab="JSON result"
+    {
+       "jsonrpc": "2.0",
+       "id": 1,
+       "result": {
+           "contractAddress": "0xf4464be696b6531b87edbfb8c21dd178c34eb89e",
+           "from": "0x372a70ace72b02cc7f1757183f98c620254f9c8d",
+           "to": null,
+           "output": "0x6080604052600436106100565763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416633fa4f245811461005b5780636057361d1461008257806367e404ce146100ae575b600080fd5b34801561006757600080fd5b506100706100ec565b60408051918252519081900360200190f35b34801561008e57600080fd5b506100ac600480360360208110156100a557600080fd5b50356100f2565b005b3480156100ba57600080fd5b506100c3610151565b6040805173ffffffffffffffffffffffffffffffffffffffff9092168252519081900360200190f35b60025490565b604080513381526020810183905281517fc9db20adedc6cf2b5d25252b101ab03e124902a73fcb12b753f3d1aaa2d8f9f5929181900390910190a16002556001805473ffffffffffffffffffffffffffffffffffffffff191633179055565b60015473ffffffffffffffffffffffffffffffffffffffff169056fea165627a7a72305820c7f729cb24e05c221f5aa913700793994656f233fe2ce3b9fd9a505ea17e8d8a0029",
+           "logs": []
+       }
+    }
+    ```
+
 ## Miscellaneous Methods 
 
 ### rpc_modules
@@ -2552,4 +2710,3 @@ Enabled JSON-RPC APIs.
             "net": "1.0"
         }
     }
-    ``` 

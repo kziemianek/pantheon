@@ -31,11 +31,12 @@ dependencies {
   implementation project(':ethereum:rlp')
   implementation project(':ethereum:trie')
   implementation project(':ethereum:permissioning')
-  implementation project(':metrics')
+  implementation project(':metrics:core')
   implementation project(':services:kvstore')
   implementation project(':services:pipeline')
   implementation project(':services:tasks')
 
+  implementation 'info.picocli:picocli'
   implementation 'io.vertx:vertx-core'
   implementation 'com.google.guava:guava'
 
