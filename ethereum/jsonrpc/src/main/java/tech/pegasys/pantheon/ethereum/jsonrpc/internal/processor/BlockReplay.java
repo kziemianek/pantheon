@@ -44,7 +44,7 @@ public class BlockReplay {
     this.worldStateArchive = worldStateArchive;
   }
 
-  public BlockTrace block(final Block block, final TransactionAction<TransactionTrace> action) {
+  public BlockTrace block(final Block block, final Action<TransactionTrace> action) {
     return performActionWithBlock(
             block.getHeader(),
             block.getBody(),
@@ -65,12 +65,12 @@ public class BlockReplay {
         .orElse(null);
   }
 
-  public BlockTrace block(final Hash blockHash, final TransactionAction<TransactionTrace> action) {
+  public BlockTrace block(final Hash blockHash, final Action<TransactionTrace> action) {
     return getBlock(blockHash).map(block -> block(block, action)).orElse(null);
   }
 
   public <T> Optional<T> beforeTransactionInBlock(
-      final Hash blockHash, final Hash transactionHash, final TransactionAction<T> action) {
+      final Hash blockHash, final Hash transactionHash, final Action<T> action) {
     return performActionWithBlock(
         blockHash,
         (body, header, blockchain, mutableWorldState, transactionProcessor) -> {
@@ -96,7 +96,7 @@ public class BlockReplay {
   }
 
   public <T> Optional<T> afterTransactionInBlock(
-      final Hash blockHash, final Hash transactionHash, final TransactionAction<T> action) {
+      final Hash blockHash, final Hash transactionHash, final Action<T> action) {
     return beforeTransactionInBlock(
         blockHash,
         transactionHash,
@@ -164,7 +164,7 @@ public class BlockReplay {
   }
 
   @FunctionalInterface
-  public interface TransactionAction<T> {
+  public interface Action<T> {
     T performAction(
         Transaction transaction,
         BlockHeader blockHeader,

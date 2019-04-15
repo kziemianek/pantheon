@@ -14,7 +14,7 @@ package tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor;
 
 import tech.pegasys.pantheon.ethereum.core.Block;
 import tech.pegasys.pantheon.ethereum.core.Hash;
-import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockReplay.TransactionAction;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.processor.BlockReplay.Action;
 import tech.pegasys.pantheon.ethereum.mainnet.TransactionProcessor;
 import tech.pegasys.pantheon.ethereum.vm.BlockHashLookup;
 import tech.pegasys.pantheon.ethereum.vm.DebugOperationTracer;
@@ -38,7 +38,7 @@ public class BlockTracer {
     return Optional.of(blockReplay.block(block, prepareReplayAction(tracer)));
   }
 
-  private TransactionAction<TransactionTrace> prepareReplayAction(
+  private Action<TransactionTrace> prepareReplayAction(
       final DebugOperationTracer tracer) {
     return (transaction, header, blockchain, mutableWorldState, transactionProcessor) -> {
       final TransactionProcessor.Result result =
